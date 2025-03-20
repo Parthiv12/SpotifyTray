@@ -3,6 +3,24 @@
 
 ### dotenv ###
 .env
+*.env
+.env.*
+.env.local
+.env.development
+.env.production
+
+# Spotify cache
+.cache
+.cache-*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
 
 ### venv ###
 # Virtualenv
