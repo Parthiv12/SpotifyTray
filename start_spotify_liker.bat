@@ -1,2 +1,2 @@
 @echo off
-pythonw "C:\full\path\to\your\spotify_kb.py" 
+pythonw "C:\Users\Akhila\Desktop\MusicLiker\spotify_kb.py" 

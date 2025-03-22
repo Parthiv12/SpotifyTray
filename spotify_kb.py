@@ -38,10 +38,8 @@ def send_notification(title, message):
             app_id="Spotify Liker",
             title=title,
             msg=message,
-            duration="long",  # Make notification stay longer
-            icon=icon_path,
-            launch="",  # Empty launch parameter to prevent clickthrough
-            silent=False  # Enable sound notification
+            duration="short",  # Make notification stay longer
+            icon=icon_path
         )
         toast.show()
         
