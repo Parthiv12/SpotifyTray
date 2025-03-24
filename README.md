@@ -1,68 +1,36 @@
-# Spotify Integration App
+# Spotify Liker
 
-A web application that integrates with Spotify's API to [main purpose/functionality]. This application allows users to interact with their Spotify account and [main features].
+A simple Windows application that lets you like/unlike Spotify songs with keyboard shortcuts.
 
 ## Features
+- Like/Unlike currently playing songs with keyboard shortcuts
+- System tray icon for easy access
+- Windows notifications
+- Track your liked songs history
 
-- Spotify Authentication
-- [Add other main features of your app]
-- [Add more features]
+## Requirements
+- Python 3.8+
+- Spotify Premium account
+- Windows OS
 
-## Getting Started
+## Installation
+1. Clone this repository
+2. Create a `.env` file from `.env.example`
+3. Add your Spotify API credentials to `.env`
+4. Run `pip install -r requirements.txt`
+5. Double-click `run_spotify_liker.bat` to start
 
-### Prerequisites
-- Node.js
-- npm or yarn
-- Spotify Premium Account (for full API functionality)
-- Spotify Developer Account
+## Usage
+- Press `Ctrl+Alt+7` to like the current song
+- Press `Ctrl+Alt+8` to unlike the current song
+- Check system tray for icon and options
+- Notifications will show when songs are liked/unliked
 
-### Setup
-
-1. Clone the repository
-```bash
-git clone [your-repository-url]
-cd [project-name]
-```
-
-2. Install dependencies
-```bash
-npm install
-# or
-yarn install
-```
-
-3. Configure Environment Variables
-Create a `.env` file in the root directory with the following:
-```env
-SPOTIFY_CLIENT_ID=your_spotify_client_id
-SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
-SPOTIFY_REDIRECT_URI=http://localhost:8888/callback
-```
-
-4. Start the development server
-```bash
-npm run dev
-# or
-yarn dev
-```
-
-## How to Use
-
-1. Visit the application URL
-2. Log in with your Spotify account
-3. [Add specific usage instructions]
-
-## Tech Stack
-
-- [Add your frontend framework]
-- [Add your backend framework]
-- Spotify Web API
-- [Add other technologies used]
+## Spotify API Setup
+1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Create a new application
+3. Add `http://localhost:8888/callback` to Redirect URIs
+4. Copy Client ID and Client Secret to `.env` file
 
 ## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-[Add your license information]
+Feel free to open issues or submit pull requests!

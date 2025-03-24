@@ -1,167 +1,199 @@
 import os
-import spotipy
 import keyboard
+from dotenv import load_dotenv
+import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from winotify import Notification
-from dotenv import load_dotenv
 import pystray
 from PIL import Image
 import threading
-import winshell
-from win32com.client import Dispatch
-import sys
+from src.core.spotify_client import SpotifyClient
+from src.features.song_tracker import SongTracker
+from src.utils.config import Config
+import time
+from src.features.playlist_manager import PlaylistManager
 
 # Load environment variables
 load_dotenv()
 
-# Spotify API credentials from .env
-SPOTIPY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
-SPOTIPY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-REDIRECT_URI = os.getenv('SPOTIFY_REDIRECT_URI')
-SCOPE = 'user-library-modify user-library-read user-read-currently-playing'
+class SpotifyLiker:
+    def __init__(self):
+        self.spotify = SpotifyClient()
+        self.tracker = SongTracker()
+        self.config = Config()
+        self.playlist_manager = PlaylistManager(self.spotify)
+        self.setup_tray()
+        self.setup_hotkeys()
 
-# Initialize Spotify client
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-    client_id=SPOTIPY_CLIENT_ID,
-    client_secret=SPOTIPY_CLIENT_SECRET,
-    redirect_uri=REDIRECT_URI,
-    scope=SCOPE
-))
+    def send_notification(self, title, message):
+        try:
+            icon_path = os.path.abspath("spotify_liker_icon.png")
+            toast = Notification(
+                app_id="Spotify Liker",
+                title=title,
+                msg=message,
+                duration="long",
+                icon=icon_path,
+                launch="",
+                toast=None
+            )
+            toast.set_audio(sound=toast.Default, loop=False)
+            toast.show()
+            
+            def check_and_resend():
+                time.sleep(0.5)
+                toast.show()
+            
+            threading.Thread(target=check_and_resend, daemon=True).start()
+            
+        except Exception as e:
+            print(f"Notification error: {e}")
 
-def send_notification(title, message):
-    """Shows a Windows notification."""
-    try:
-        # Get the absolute path to the icon
-        icon_path = os.path.abspath("spotify_liker_icon.png")
-        
-        toast = Notification(
-            app_id="Spotify Liker",
-            title=title,
-            msg=message,
-            duration="short",  # Make notification stay longer
-            icon=icon_path
+    def like_current_song(self):
+        try:
+            print("\n--- Debug Info ---")
+            print("1. Getting current track...")
+            
+            # Try different methods to get the current track
+            current_playback = self.spotify.sp.current_playback()
+            print("Current playback:", current_playback)
+            
+            current_playing = self.spotify.sp.current_user_playing_track()
+            print("Current playing track:", current_playing)
+            
+            # Use whichever method returns data
+            current_track = current_playback or current_playing
+            
+            if current_track and current_track.get('item'):
+                track_id = current_track['item']['id']
+                track_name = current_track['item']['name']
+                artist_name = current_track['item']['artists'][0]['name']
+                
+                print(f"2. Found track: {track_name} by {artist_name}")
+                
+                is_liked = self.spotify.is_track_liked(track_id)
+                print(f"3. Track is liked: {is_liked}")
+                
+                if not is_liked:
+                    if self.spotify.like_track(track_id):
+                        self.tracker.add_liked_song(track_id, track_name, artist_name)
+                        message = f"'{track_name}' by {artist_name}"
+                        print(f"4. Successfully liked song: {message}")
+                        self.send_notification("Song Liked! ❤️", message)
+                else:
+                    message = f"'{track_name}' is already in your liked songs!"
+                    self.send_notification("Already Liked!", message)
+            else:
+                print("No track data found. Make sure:")
+                print("- Spotify is running")
+                print("- A song is currently playing (not paused)")
+                print("- You're using the same Spotify account you authorized with")
+                self.send_notification("No Song Playing", "Please play a song first")
+        except Exception as e:
+            print(f"Error: {e}")
+            self.send_notification("Error", str(e))
+
+    def unlike_current_song(self):
+        try:
+            current_track = self.spotify.get_current_track()
+            if current_track and current_track.get('item'):
+                track_id = current_track['item']['id']
+                track_name = current_track['item']['name']
+                artist_name = current_track['item']['artists'][0]['name']
+                
+                if self.spotify.is_track_liked(track_id):
+                    if self.spotify.unlike_track(track_id):
+                        self.tracker.remove_liked_song(track_id)
+                        message = f"'{track_name}' by {artist_name}"
+                        print(f"Unliked song: {message}")
+                        self.send_notification("Song Unliked 💔", message)
+                else:
+                    message = f"'{track_name}' is not in your liked songs!"
+                    self.send_notification("Not Liked!", message)
+            else:
+                self.send_notification("No Song Playing", "Please play a song first")
+        except Exception as e:
+            print(f"Error: {e}")
+            self.send_notification("Error", str(e))
+
+    def create_monthly_playlist(self):
+        try:
+            playlist_name = self.playlist_manager.create_monthly_playlist()
+            if playlist_name:
+                self.send_notification(
+                    "Playlist Created! 📝",
+                    f"Created playlist: {playlist_name}"
+                )
+            else:
+                self.send_notification(
+                    "Playlist Error ❌",
+                    "No songs found for this month"
+                )
+        except Exception as e:
+            self.send_notification("Error", str(e))
+
+    def create_genre_playlists(self):
+        try:
+            playlists = self.playlist_manager.create_genre_playlists()
+            if playlists:
+                self.send_notification(
+                    "Genre Playlists Created! 🎵",
+                    f"Created {len(playlists)} genre-based playlists"
+                )
+            else:
+                self.send_notification(
+                    "Genre Playlists Error ❌",
+                    "Could not create genre playlists"
+                )
+        except Exception as e:
+            self.send_notification("Error", str(e))
+
+    def setup_hotkeys(self):
+        keyboard.add_hotkey(
+            self.config.settings['hotkeys']['like_song'],
+            self.like_current_song
         )
-        toast.show()
-        
-    except Exception as e:
-        print(f"Notification error: {e}")
+        keyboard.add_hotkey(
+            self.config.settings['hotkeys']['unlike_song'],
+            self.unlike_current_song
+        )
 
-def like_current_song():
-    try:
-        current_track = sp.current_user_playing_track()
-        if current_track and current_track['item']:
-            track_id = current_track['item']['id']
-            track_name = current_track['item']['name']
-            artist_name = current_track['item']['artists'][0]['name']
-            
-            is_liked = sp.current_user_saved_tracks_contains([track_id])[0]
-            
-            if not is_liked:
-                sp.current_user_saved_tracks_add([track_id])
-                message = f"Track: {track_name}\nArtist: {artist_name}"  # More detailed message
-                print(f"Liked song: {message}")
-                send_notification("♥️ Song Added to Liked Songs! ♥️", message)  # More visible title
-            else:
-                message = f"Track: {track_name}\nArtist: {artist_name}"
-                send_notification("Already in Liked Songs ✨", message)
+    def create_icon(self):
+        if os.path.exists("spotify_liker_icon.png"):
+            return Image.open("spotify_liker_icon.png")
         else:
-            send_notification("⚠️ No Song Playing", "Please play a song first")
-    except Exception as e:
-        send_notification("❌ Error", str(e))
-        print(f"Error: {e}")
+            icon_size = (32, 32)
+            icon_color = (30, 215, 96)  # Spotify green
+            return Image.new('RGB', icon_size, icon_color)
 
-def unlike_current_song():
-    try:
-        current_track = sp.current_user_playing_track()
-        if current_track and current_track['item']:
-            track_id = current_track['item']['id']
-            track_name = current_track['item']['name']
-            artist_name = current_track['item']['artists'][0]['name']
-            
-            is_liked = sp.current_user_saved_tracks_contains([track_id])[0]
-            
-            if is_liked:
-                sp.current_user_saved_tracks_delete([track_id])
-                message = f"Track: {track_name}\nArtist: {artist_name}"
-                print(f"Unliked song: {message}")
-                send_notification("💔 Song Removed from Liked Songs 💔", message)
-            else:
-                message = f"Track: {track_name}\nArtist: {artist_name}"
-                send_notification("Not in Liked Songs ❌", message)
-        else:
-            send_notification("⚠️ No Song Playing", "Please play a song first")
-    except Exception as e:
-        send_notification("❌ Error", str(e))
-        print(f"Error: {e}")
-
-def get_icon():
-    """Load the custom icon."""
-    icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spotify_liker_icon.png")
-    if os.path.exists(icon_path):
-        return Image.open(icon_path)
-    else:
-        # Fallback to a colored icon if custom icon is not found
-        icon_size = (32, 32)
-        icon_color = (30, 215, 96)  # Spotify green
-        return Image.new('RGB', icon_size, icon_color)
-
-def setup_tray():
-    icon = pystray.Icon(
-        "Spotify Liker",
-        icon=get_icon(),
-        menu=pystray.Menu(
+    def setup_tray(self):
+        menu_items = [
             pystray.MenuItem("Spotify Liker", lambda: None, enabled=False),
-            pystray.MenuItem("Like Song (Ctrl+Alt+7)", lambda: None, enabled=False),
-            pystray.MenuItem("Unlike Song (Ctrl+Alt+8)", lambda: None, enabled=False),
+            pystray.MenuItem("Like Song (Ctrl+Alt+7)", lambda: self.like_current_song()),
+            pystray.MenuItem("Unlike Song (Ctrl+Alt+8)", lambda: self.unlike_current_song()),
+            pystray.MenuItem("Create Monthly Playlist", lambda: self.create_monthly_playlist()),
+            pystray.MenuItem("Create Genre Playlists", lambda: self.create_genre_playlists()),
             pystray.MenuItem("Exit", lambda icon: icon.stop())
+        ]
+        
+        self.icon = pystray.Icon(
+            "Spotify Liker",
+            icon=self.create_icon(),
+            menu=pystray.Menu(*menu_items)
         )
-    )
-    return icon
 
-def run_keyboard_listener():
-    keyboard.add_hotkey("ctrl+alt+7", like_current_song)
-    keyboard.add_hotkey("ctrl+alt+8", unlike_current_song)
-    keyboard.wait()
-
-def create_startup_shortcut():
-    try:
-        startup_folder = winshell.startup()
-        script_path = os.path.abspath(__file__)
-        pythonw_path = os.path.join(os.path.dirname(sys.executable), 'pythonw.exe')
-        
-        shortcut_path = os.path.join(startup_folder, "Spotify Liker.lnk")
-        
-        shell = Dispatch('WScript.Shell')
-        shortcut = shell.CreateShortCut(shortcut_path)
-        shortcut.Targetpath = pythonw_path
-        shortcut.Arguments = f'"{script_path}"'
-        shortcut.WorkingDirectory = os.path.dirname(script_path)
-        shortcut.save()
-        
-        print("✅ Startup shortcut created successfully!")
-        print(f"The script will now start automatically when Windows starts")
-    except Exception as e:
-        print(f"❌ Error creating startup shortcut: {e}")
-
-def main():
-    # Start keyboard listener in a separate thread
-    keyboard_thread = threading.Thread(target=run_keyboard_listener, daemon=True)
-    keyboard_thread.start()
-    
-    # Create and run system tray icon
-    icon = setup_tray()
-    
-    # Show startup notification
-    send_notification(
-        "Spotify Liker Started",
-        "Running in background\nCtrl+Alt+7 to like\nCtrl+Alt+8 to unlike"
-    )
-    
-    # Run the system tray icon
-    icon.run()
+    def run(self):
+        self.send_notification(
+            "Spotify Liker Started",
+            "Running in background\nCtrl+Alt+7 to like\nCtrl+Alt+8 to unlike"
+        )
+        self.icon.run()
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--setup":
-        create_startup_shortcut()
-    else:
-        main()
+    print("Starting Spotify Liker...")
+    print("Use Ctrl+Alt+7 to like the current song")
+    print("Use Ctrl+Alt+8 to unlike the current song")
+    print("Check system tray for icon")
+    
+    app = SpotifyLiker()
+    app.run()

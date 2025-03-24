@@ -8,10 +8,7 @@
 .env.local
 .env.development
 .env.production
-
-# Spotify cache
-.cache
-.cache-*
+!.env.example
 
 # Python
 __pycache__/
@@ -35,5 +32,17 @@ env/
 pyvenv.cfg
 .venv
 pip-selfcheck.json
+
+# Database
+data/
+*.sqlite
+
+# Spotify cache
+.cache
+.cache-*
+
+# IDE
+.vscode/
+.idea/
 
 # End of https://www.toptal.com/developers/gitignore/api/dotenv,venv
