@@ -1,0 +1,14 @@
+spotipy
+python-dotenv
+keyboard
+pystray
+pillow
+winotify
+pyyaml
+pandas
+matplotlib
+plotly
+dash
+dash-bootstrap-components
+python-dateutil
+schedule 

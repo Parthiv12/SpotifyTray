@@ -1,0 +1,9 @@
+playlist_settings:
+  genre_playlist_prefix: 'Genre: '
+  monthly_playlist_name: Monthly Favorites
+  weekly_playlist_name: Weekly Favorites
+shortcuts:
+  dislike_song: ctrl+down
+  like_song: ctrl+up
+  next_track: ctrl+right
+  previous_track: ctrl+left

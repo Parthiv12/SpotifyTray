@@ -1,0 +1,13 @@
+hotkeys:
+  like_song: ctrl+alt+7
+  unlike_song: ctrl+alt+8
+  show_stats: ctrl+alt+s
+  create_playlist: ctrl+alt+p
+
+notifications:
+  duration: long
+  sound: true
+
+features:
+  monthly_playlist: true
+  stats_tracking: true 

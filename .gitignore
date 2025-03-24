@@ -1,0 +1,48 @@
+# Created by https://www.toptal.com/developers/gitignore/api/dotenv,venv
+# Edit at https://www.toptal.com/developers/gitignore?templates=dotenv,venv
+
+### dotenv ###
+.env
+*.env
+.env.*
+.env.local
+.env.development
+.env.production
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+
+### venv ###
+# Virtualenv
+# http://iamzed.com/2009/05/07/a-primer-on-virtualenv/
+.Python
+[Bb]in
+[Ii]nclude
+[Ll]ib
+[Ll]ib64
+[Ll]ocal
+[Ss]cripts
+pyvenv.cfg
+.venv
+pip-selfcheck.json
+
+# Database
+data/
+*.sqlite
+
+# Spotify cache
+.cache
+.cache-*
+
+# IDE
+.vscode/
+.idea/
+
+# End of https://www.toptal.com/developers/gitignore/api/dotenv,venv
